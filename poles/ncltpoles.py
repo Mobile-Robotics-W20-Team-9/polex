@@ -21,13 +21,17 @@ import particlefilter
 import poles
 import pynclt
 import util
+import sys
 
 
-plt.rcParams['text.latex.preamble']=[r'\usepackage{lmodern}']
-params = {'text.usetex': True,
-          'font.size': 16,
-          'font.family': 'lmodern',
-          'text.latex.unicode': True}
+# plt.rcParams['text.latex.preamble']=[r'\usepackage{lmodern}']
+# params = {'text.usetex': True,
+#           'font.size': 16,
+#           'font.family': 'lmodern',
+#           'text.latex.unicode': True}
+
+# TODO: UPDATE THIS!
+localization_name_start = 'localization_3_6_7_2020-04'
 
 mapextent = np.array([30.0, 30.0, 5.0])
 mapsize = np.full(3, 0.2)
@@ -151,7 +155,7 @@ def save_global_map():
             poleparams[ci, :-1], axis=0, weights=poleparams[ci, -1])])
         scores.append(np.mean(poleparams[ci, -1]))
     clustermeans = np.hstack([clustermeans, np.array(scores).reshape([-1, 1])])
-    globalmapfile = os.path.join('nclt', get_globalmapname() + '.npz')
+    globalmapfile = os.path.join(pynclt.resultdir, get_globalmapname() + '.npz')
     np.savez(globalmapfile, 
         polemeans=clustermeans, mapfactors=mapfactors, mappos=globalmappos)
     plot_global_map(globalmapfile)
@@ -161,12 +165,12 @@ def plot_global_map(globalmapfile):
     data = np.load(globalmapfile)
     x, y = data['polemeans'][:, :2].T
     plt.clf()
-    plt.rcParams.update(params)
+    # plt.rcParams.update(params)
     plt.scatter(x, y, s=1, c='b', marker='.')
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
     plt.savefig(globalmapfile[:-4] + '.svg')
-    plt.savefig(globalmapfile[:-4] + '.pgf')
+    # plt.savefig(globalmapfile[:-4] + '.pgf')
     print(data['mapfactors'])
 
 
@@ -222,7 +226,7 @@ def save_local_maps(sessionname, visualize=False):
 
 
 def view_local_maps(sessionname):
-    sessiondir = os.path.join('nclt', sessionname)
+    sessiondir = os.path.join(pynclt.resultdir, sessionname)
     session = pynclt.session(sessionname)
     maps = np.load(os.path.join(sessiondir, get_localmapfile()))['maps']
     for i, map in enumerate(maps):
@@ -254,14 +258,14 @@ def view_local_maps(sessionname):
 
 
 def evaluate_matches():
-    mapdata = np.load(os.path.join('nclt', get_globalmapname() + '.npz'))
+    mapdata = np.load(os.path.join(pynclt.resultdir, get_globalmapname() + '.npz'))
     polemap = mapdata['polemeans'][:, :2]
     kdtree = scipy.spatial.cKDTree(polemap[:, :2], leafsize=10)
     maxdist = 0.5
     n_matches = np.zeros(len(pynclt.sessions))
     n_all = np.zeros(len(pynclt.sessions))
     for i, sessionname in enumerate(pynclt.sessions):
-        sessiondir = os.path.join('nclt', sessionname)
+        sessiondir = os.path.join(pynclt.resultdir, sessionname)
         session = pynclt.session(sessionname)
         maps = np.load(os.path.join(sessiondir, get_localmapfile()))['maps']
         for map in maps:
@@ -285,11 +289,11 @@ def evaluate_matches():
 
 def localize(sessionname, visualize=False):
     print(sessionname)
-    mapdata = np.load(os.path.join('nclt', get_globalmapname() + '.npz'))
+    mapdata = np.load(os.path.join(pynclt.resultdir, get_globalmapname() + '.npz'))
     polemap = mapdata['polemeans'][:, :2]
     polevar = 1.50
     session = pynclt.session(sessionname)
-    locdata = np.load(os.path.join(session.dir, get_localmapfile()))['maps']
+    locdata = np.load(os.path.join(session.dir, get_localmapfile()), allow_pickle=True)['maps']
     polepos_m = []
     polepos_w = []
     for i in range(len(locdata)):
@@ -419,18 +423,18 @@ def plot_trajectories():
     trajectorydir = os.path.join(
         pynclt.resultdir, 'trajectories_est_{:.0f}_{:.0f}_{:.0f}'.format(
             n_mapdetections, 10 * poles.minscore, poles.polesides[-1]))
-    pgfdir = os.path.join(trajectorydir, 'pgf')
+    # pgfdir = os.path.join(trajectorydir, 'pgf')
     util.makedirs(trajectorydir)
-    util.makedirs(pgfdir)
-    mapdata = np.load(os.path.join('nclt', get_globalmapname() + '.npz'))
+    # util.makedirs(pgfdir)
+    mapdata = np.load(os.path.join(pynclt.resultdir, get_globalmapname() + '.npz'))
     polemap = mapdata['polemeans']
-    plt.rcParams.update(params)
+    # plt.rcParams.update(params)
     for sessionname in pynclt.sessions:
         try:
             session = pynclt.session(sessionname)
             files = [file for file \
                 in os.listdir(os.path.join(pynclt.resultdir, sessionname)) \
-                    if file.startswith('localization_3_6_7_2019-07')]
+                    if file.startswith(localization_name_start)]
                     # if file.startswith(get_locfileprefix())]
             for file in files:
                 T_w_r_est = np.load(os.path.join(
@@ -447,7 +451,7 @@ def plot_trajectories():
                     bottom=0.13, top=0.98, left=0.145, right=0.98)
                 filename = sessionname + file[18:-4]
                 plt.savefig(os.path.join(trajectorydir, filename + '.svg'))
-                plt.savefig(os.path.join(pgfdir, filename + '.pgf'))
+                # plt.savefig(os.path.join(pgfdir, filename + '.pgf'))
         except:
             pass
 
@@ -457,7 +461,7 @@ def evaluate():
     for sessionname in pynclt.sessions:
         files = [file for file \
             in os.listdir(os.path.join(pynclt.resultdir, sessionname)) \
-                if file.startswith('localization_3_6_7_2019-07')]
+                if file.startswith(localization_name_start)]
                 # if file.startswith(get_locfileprefix())]
         files.sort()
         session = pynclt.session(sessionname)
@@ -497,7 +501,7 @@ def evaluate():
             'angerror': angerror, 'angrmse': angrmse, 'T_gt_est': T_gt_est})
     np.savez(os.path.join(pynclt.resultdir, get_evalfile()), stats=stats)
     
-    mapdata = np.load(os.path.join('nclt', get_globalmapname() + '.npz'))
+    mapdata = np.load(os.path.join(pynclt.resultdir, get_globalmapname() + '.npz'))
     print('session \t f\te_pos \trmse_pos \te_ang \te_rmse')
     row = '{session} \t{f} \t{poserror} \t{posrmse} \t{angerror} \t{angrmse}'
     for i, stat in enumerate(stats):
@@ -514,8 +518,11 @@ if __name__ == '__main__':
     poles.minscore = 0.6
     poles.polesides = range(1, 7+1)
     save_global_map()
-    session = '2012-01-08'
+    # TODO: Change this to the session you want to find trajectory for
+    session = '2012-01-15'
     save_local_maps(session)
-    localize(session)
+    # Set visualization to False
+    localize(session, False)
     plot_trajectories()
     evaluate()    
+ 

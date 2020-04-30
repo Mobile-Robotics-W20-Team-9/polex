@@ -7,7 +7,7 @@ import skimage.measure
 import torch
 
 
-device = torch.device('cuda')
+device = torch.device('cpu')
 polesides = range(1, 5+1)
 minscore = 0.6
 minheight = 1.0
